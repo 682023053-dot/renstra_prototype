@@ -25,13 +25,11 @@
 
     <div id="root">
         <!-- Konten React/Recharts akan dirender di sini -->
-        <div class="p-8 text-center text-lg text-gray-500">Memuat Dashboard... Harap tunggu.</div>
+        <div class="p-8 text-center text-lg text-gray-500" id="initial-loading">Memuat Dashboard... Harap tunggu.</div>
     </div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
-
-        // Data untuk Dashboard
+        // --- Data untuk Dashboard ---
         const kpiData = [
             { id: 1, title: 'Integrasi Layanan', value: '85%', subtitle: 'Unit terhubung ke dashboard' },
             { id: 2, title: 'Downtime Bulanan', value: '0.7%', subtitle: 'Target < 1%' },
@@ -64,22 +62,21 @@
 
         const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B'];
 
-        // Komponen Utama
+        // --- Komponen Utama ---
         function GojekSiTiPrototype() {
-            // Kita mendapatkan referensi Recharts dari window.
+            // Pastikan Recharts tersedia di window scope
             const Recharts = window.Recharts;
             
-            // Tampilkan pesan error/loading jika Recharts belum dimuat
+            // Tampilkan pesan jika Recharts belum dimuat (walaupun initApp sudah memastikan ini)
             if (!Recharts) {
-                // Return null atau loading state jika library belum tersedia
                 return (
-                    <div className="p-8 text-center text-indigo-600 text-lg">
-                        Inisialisasi komponen grafik...
+                    <div className="p-8 text-center text-red-600 text-lg">
+                        Gagal memuat komponen grafik Recharts.
                     </div>
                 );
             }
 
-            // Ambil objek Recharts dari scope window setelah dipastikan ada
+            // Ambil komponen Recharts yang diperlukan
             const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
             
             // Komponen untuk Rating Bintang
@@ -291,30 +288,42 @@
             );
         }
 
-        // Fungsi inisialisasi untuk memastikan Recharts sudah dimuat
+        // Fungsi inisialisasi untuk memastikan semua library eksternal sudah dimuat
         function initApp() {
             const container = document.getElementById('root');
-            if (container && window.Recharts && window.React && window.ReactDOM) {
-                // Hapus kelas CSS yang mungkin menunda rendering
-                container.classList.remove('text-center', 'text-lg', 'text-gray-500');
-                container.innerHTML = '';
+            const initialLoading = document.getElementById('initial-loading');
+            
+            if (container && window.Recharts && window.React && window.ReactDOM && window.Babel) {
+                // Semua dependensi sudah siap.
+                console.log("SUCCESS: Semua library eksternal (React, Recharts, Babel) berhasil dimuat.");
                 
-                // Gunakan ReactDOM.render
+                // Hapus pesan loading awal
+                if (initialLoading) {
+                    initialLoading.remove();
+                }
+                
+                // Render komponen React utama
                 ReactDOM.render(<GojekSiTiPrototype />, container);
-            } else if (container) {
-                 // Tampilkan pesan jika belum siap (seharusnya tertutup oleh event listener)
-                 console.log("Menunggu library eksternal (Recharts/React) dimuat...");
+            } else {
+                 // Gagal memuat library, tampilkan pesan error yang jelas di konsol.
+                 console.error("ERROR: Gagal inisialisasi aplikasi. Cek koneksi internet atau status CDN. Dependensi yang hilang:", {
+                    React: !!window.React,
+                    ReactDOM: !!window.ReactDOM,
+                    Recharts: !!window.Recharts,
+                    Babel: !!window.Babel
+                 });
+
+                 if (container) {
+                     container.innerHTML = `<div class="p-8 text-center text-red-600 text-lg">
+                        ⚠️ Gagal memuat komponen. Silakan cek Konsol Browser (F12) untuk detail error atau refresh halaman.
+                     </div>`;
+                 }
             }
         }
 
         // Jalankan inisialisasi setelah DOM dimuat dan semua resource eksternal selesai dimuat.
-        // DOMContentLoaded lebih cepat, tapi 'load' lebih aman untuk CDN. Kita pakai 'load'.
         window.addEventListener('load', initApp);
-
-        // Fallback untuk memastikan inisialisasi berjalan jika 'load' event terlewat
-        if (document.readyState === 'complete') {
-            initApp();
-        }
+        
     </script>
 </body>
 </html>
