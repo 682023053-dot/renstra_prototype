@@ -19,12 +19,15 @@
         body { font-family: 'Inter', sans-serif; }
         .chart-container { width: 100%; height: 220px; }
         .table-container { max-height: 250px; overflow-y: auto; }
+        /* Pastikan elemen loading tidak memiliki opacity: 0 */
+        #initial-loading { transition: opacity 0.3s; }
     </style>
 </head>
 <body class="min-h-screen bg-gray-50 text-gray-800 font-sans">
 
     <div id="root">
         <!-- Konten React/Recharts akan dirender di sini -->
+        <!-- Pesan ini seharusnya tersembunyi/dihapus oleh React setelah rendering sukses -->
         <div class="p-8 text-center text-lg text-gray-500" id="initial-loading">Memuat Dashboard... Harap tunggu.</div>
     </div>
 
@@ -67,26 +70,16 @@
             // Pastikan Recharts tersedia di window scope
             const Recharts = window.Recharts;
             
-            // Tampilkan pesan jika Recharts belum dimuat (walaupun initApp sudah memastikan ini)
-            if (!Recharts) {
-                return (
-                    <div className="p-8 text-center text-red-600 text-lg">
-                        Gagal memuat komponen grafik Recharts.
-                    </div>
-                );
-            }
-
-            // Ambil komponen Recharts yang diperlukan
-            const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
-            
             // Komponen untuk Rating Bintang
             const StarRating = ({ rating }) => {
                 const fullStars = Math.floor(rating);
-                // Menggunakan karakter Unicode Bintang Penuh (★) dan Bintang Kosong (☆)
                 const starIcons = '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
                 return <span className="text-yellow-500">{starIcons}</span>;
             };
 
+            // Ambil komponen Recharts yang diperlukan
+            const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } = Recharts;
+            
             return (
                 <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
                     <header className="bg-white shadow-sm sticky top-0 z-30">
@@ -288,42 +281,44 @@
             );
         }
 
-        // Fungsi inisialisasi untuk memastikan semua library eksternal sudah dimuat
-        function initApp() {
+        // Fungsi yang dieksekusi secara langsung
+        (function renderApp() {
             const container = document.getElementById('root');
             const initialLoading = document.getElementById('initial-loading');
             
-            if (container && window.Recharts && window.React && window.ReactDOM && window.Babel) {
-                // Semua dependensi sudah siap.
-                console.log("SUCCESS: Semua library eksternal (React, Recharts, Babel) berhasil dimuat.");
-                
+            // Periksa apakah semua dependensi sudah ada (React, ReactDOM, Recharts)
+            if (!window.React || !window.ReactDOM || !window.Recharts) {
+                 console.error("ERROR: Dependensi eksternal belum siap saat script Babel dieksekusi.");
+                 if (container) {
+                     container.innerHTML = `<div class="p-8 text-center text-red-600 text-lg">
+                        ⚠️ Gagal memuat komponen. Cek koneksi Anda.
+                     </div>`;
+                 }
+                 return;
+            }
+            
+            // Render komponen React utama
+            try {
                 // Hapus pesan loading awal
                 if (initialLoading) {
                     initialLoading.remove();
                 }
                 
-                // Render komponen React utama
                 ReactDOM.render(<GojekSiTiPrototype />, container);
-            } else {
-                 // Gagal memuat library, tampilkan pesan error yang jelas di konsol.
-                 console.error("ERROR: Gagal inisialisasi aplikasi. Cek koneksi internet atau status CDN. Dependensi yang hilang:", {
-                    React: !!window.React,
-                    ReactDOM: !!window.ReactDOM,
-                    Recharts: !!window.Recharts,
-                    Babel: !!window.Babel
-                 });
-
-                 if (container) {
-                     container.innerHTML = `<div class="p-8 text-center text-red-600 text-lg">
-                        ⚠️ Gagal memuat komponen. Silakan cek Konsol Browser (F12) untuk detail error atau refresh halaman.
-                     </div>`;
-                 }
+                console.log("SUCCESS: Dashboard berhasil dirender.");
+            } catch (error) {
+                console.error("ERROR: Gagal merender komponen React (Kemungkinan error JSX/Babel):", error);
+                if (container) {
+                    container.innerHTML = `<div class="p-8 text-center text-red-600 text-lg">
+                        ⚠️ ERROR Rendering. Cek konsol (F12) untuk detail Babel/JSX error.
+                    </div>`;
+                }
             }
-        }
-
-        // Jalankan inisialisasi setelah DOM dimuat dan semua resource eksternal selesai dimuat.
-        window.addEventListener('load', initApp);
+        })();
         
+        // Catatan: window.addEventListener('load', ...) telah dihapus karena kita mengandalkan Babel untuk menjalankan ini
+        // setelah semua file CDN di atasnya selesai dimuat.
+
     </script>
 </body>
 </html>
